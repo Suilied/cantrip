@@ -1,0 +1,17 @@
+[package]
+name = "cantrip"
+version = "0.1.0"
+authors = ["Suilied <Suilied@hotmail.nl>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy = "0.5"
+rand = "0.8.3"
+
+#[dependencies]
+#bevy={git="https://github.com/bevyengine/bevy", rev="bc4fe9b186db3f32eef38fc4241289df480fa949"}
+
+[profile.dev.package."*"]
+opt-level = 3 #dev 3 is nice 1 is better
