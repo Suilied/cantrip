@@ -14,18 +14,22 @@ struct Player {
 
 fn player_movement(
     keyboard_input: Res<Input<KeyCode>>,
-    mut position_players: Query<(&mut Transform, &mut Player)>,
+    mut position_players: Query<(&mut Transform, &mut Sprite, &mut Player)>,
     mut exit: EventWriter<AppExit>,
 ) {
-    for (mut transform, mut player) in position_players.iter_mut() {
+    for (mut transform, mut sprite, mut player) in position_players.iter_mut() {
         let mut stop_bounce = true;
         if keyboard_input.pressed(KeyCode::Left) {
             player.posx -= MAX_MOVE_SPEED;
             stop_bounce = false;
+
+            sprite.flip_x = true;
         }
         if keyboard_input.pressed(KeyCode::Right) {
             player.posx += MAX_MOVE_SPEED;
             stop_bounce = false;
+
+            sprite.flip_x = false;
         }
         if keyboard_input.pressed(KeyCode::Up) {
             player.posy += MAX_MOVE_SPEED;
