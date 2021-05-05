@@ -2,110 +2,70 @@ use bevy::prelude::*;
 use bevy::render::pass::ClearColor;
 use bevy::app::AppExit;
 
-const MAX_MOVE_SPEED: f32 = 1.;
-struct Player;
-struct Bounce {
-    maxheight: f32,
-    curheight: f32,
-    bounce_distance: f32,
+const MAX_MOVE_SPEED: f32 = 2.;
+
+struct Player {
+    bounce_offset: f32,
+    bounce_speed: f32,
+    bounce_power: f32,
+    posx: f32,
+    posy: f32,
 }
-
-// struct Size {
-//     width: f32,
-//     height: f32,
-// }
-
-// impl Size {
-//     pub fn square(x: f32) -> Self {
-//         Self {
-//             width: x,
-//             height: x,
-//         }
-//     }
-// }
-
-// struct Materials {
-//     player_material: Handle<ColorMaterial>,
-// }
-
-// fn main() {
-//     let window = WindowDescriptor {
-//         title: "cantrip".to_string(),
-//         width: 500.,
-//         height: 500.,
-//         ..Default::default()
-//     };
-
-//     App::build()
-//         .insert_resource(window)
-//         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
-//         .add_startup_system(setup.system())
-//         .add_startup_stage("game_setup", SystemStage::single(spawn_player.system()))
-//         .add_system(player_movement.system())
-//         // .add_system_set_to_stage(
-//         //     CoreStage::PostUpdate,
-//         //     SystemSet::new()
-//         //         .with_system(position_translation.system())
-//         //         .with_system(size_scaling.system()),
-//         // )
-//         .add_plugins(DefaultPlugins)
-//         .run();
-// }
-
-// fn setup(
-//     mut commands: Commands,
-//     mut materials: ResMut<Assets<ColorMaterial>>,
-// ){
-//     commands.spawn_bundle(OrthographicCameraBundle::new_2d());
-//     commands.insert_resource(Materials {
-//         player_material: materials.add(Color::rgb(0.7, 0.7, 0.7).into()),
-//     });
-// }
-
-// fn spawn_player(
-//     mut commands: Commands,
-//     materials: Res<Materials>,
-//     assetloader: Res<AssetServer>
-// ) {
-//     let tex_handle = assetloader.load("sprites/player.png");
-
-//     commands.spawn_bundle(SpriteBundle {
-//         material: tex_handle.into(), //materials.player_material.clone(),
-//         //sprite: Sprite::new(Vec2::new(10., 10.)),
-//         ..Default::default()
-//     })
-//     .insert(Player)
-//     .insert(Size::square(0.8));
-// }
 
 fn player_movement(
     keyboard_input: Res<Input<KeyCode>>,
-    mut player_positions: Query<&mut Transform, With<Player>>,
+    mut position_players: Query<(&mut Transform, &mut Player)>,
     mut exit: EventWriter<AppExit>,
 ) {
-    for mut transform in player_positions.iter_mut() {
+    for (mut transform, mut player) in position_players.iter_mut() {
+        let mut stop_bounce = true;
         if keyboard_input.pressed(KeyCode::Left) {
-            transform.translation.x -= MAX_MOVE_SPEED;
+            player.posx -= MAX_MOVE_SPEED;
+            stop_bounce = false;
         }
         if keyboard_input.pressed(KeyCode::Right) {
-            transform.translation.x += MAX_MOVE_SPEED;
+            player.posx += MAX_MOVE_SPEED;
+            stop_bounce = false;
         }
         if keyboard_input.pressed(KeyCode::Up) {
-            transform.translation.y += MAX_MOVE_SPEED;
+            player.posy += MAX_MOVE_SPEED;
+            stop_bounce = false;
         }
         if keyboard_input.pressed(KeyCode::Down) {
-            transform.translation.y -= MAX_MOVE_SPEED;
+            player.posy -= MAX_MOVE_SPEED;
+            stop_bounce = false;
         }
         if keyboard_input.pressed(KeyCode::Escape) {
             println!("!!!ESCAPE!!!");
             exit.send(AppExit);
-            //rage_quit();
         }
-        // add offset when moving
-        //transform.translation.y += 
+
+        let start_bounce = keyboard_input.just_pressed(KeyCode::Left) || keyboard_input.just_pressed(KeyCode::Right) || keyboard_input.just_pressed(KeyCode::Up) || keyboard_input.just_pressed(KeyCode::Down);
+
+        if stop_bounce && player.bounce_speed > 0. {
+            player.bounce_speed = 0.;
+        }
+
+        if start_bounce && player.bounce_speed == 0. {
+            player.bounce_speed = player.bounce_power;
+        }
+
+        if player.bounce_speed < 0. && player.bounce_offset < 0. {
+            if stop_bounce == false { 
+                player.bounce_speed = player.bounce_power;
+            } else {
+                player.bounce_speed = 0.;
+            }
+            player.bounce_offset = 0.;
+        }
+
+        player.bounce_offset += player.bounce_speed;
+        if player.bounce_offset > 0. { player.bounce_speed -= 0.08; }
+
+        transform.translation.x = player.posx;
+        transform.translation.y = player.posy + player.bounce_offset;
     }
 }
-
 
 fn main() {
     App::build()
@@ -126,5 +86,11 @@ fn setup(
         material: materials.add(texture_handle.into()),
         ..Default::default()
     })
-    .insert(Player);
+    .insert(Player{
+        bounce_offset: 0.,
+        bounce_speed: 0.,
+        bounce_power: 2.,
+        posx: 0.,
+        posy: 0.,
+    });
 }
