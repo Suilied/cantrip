@@ -6,6 +6,8 @@ pub use super::character::Character;
 const MAX_MOVE_SPEED: f32 = 2.;
 const MOTE_SPAWN_SPEED: f32 = 0.5;
 
+pub struct MainCam;
+
 pub enum Affinity {
     Anger,
     Joy,
@@ -229,4 +231,16 @@ pub fn update_manabars(
         transform.translation.y = bar.pos.y;
     }
 
+}
+
+pub fn update_camera(
+    mut player: Query<(&mut Character, With<Player>)>,
+    mut cam: Query<(&mut Transform, With<MainCam>)>,
+) {
+    let (character, _isplayer) = player.single_mut().expect("there can be only one player!");
+    let (mut camtransform, _iscam) = cam.single_mut().expect("there can be only one main-camera!");
+
+    //if character.posx
+    camtransform.translation.x = character.posx;
+    camtransform.translation.y = character.posy;
 }
