@@ -1,110 +1,61 @@
 use bevy::prelude::*;
 
+use super::player::MainCam;
+
 const BGWIDTH: i32 = 7;
 const BGHEIGHT: i32 = 5;
-const TXWIDTH: i32 = 256;
-const TXHEIGHT: i32 = 256;
+
+const TXWIDTH: f32 = 256.;
+const TXHEIGHT: f32 = 256.;
 
 pub struct Tile{
-    index: i32,
-    pos: Vec3,
+    posx: f32,
+    posy: f32,
 }
 
-struct Boundary {
-    left: f32,
-    right: f32,
-    top: f32,
-    bottom: f32,
-}
-
-pub struct Background {
-    tiles: Vec<Vec3>,
-    offset: Vec3,
-    innerbound: Boundary,
-    outerbound: Boundary,
-}
-
-fn getx(index: i32)-> f32 {
-    ((index%BGWIDTH)*TXWIDTH) as f32
-}
-
-fn gety(index: i32) -> f32 {
-    ((index/BGWIDTH)*TXHEIGHT) as f32
+fn get_offset(window: &mut Window, center: Vec3) -> (f32, f32) {
+    let x = ((-(window.width() / 2.) + center.x)/TXWIDTH).floor() * TXWIDTH;
+    let y = ((-(window.height() / 2.) + center.y)/TXHEIGHT).floor() * TXHEIGHT;
+    (x, y)
 }
 
 pub fn setup_background(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut windows: ResMut<Windows>,
 ){
-
+    let mut window = windows.get_primary_mut().unwrap();
     let texture_handle = asset_server.load("sprites/background.png");
-    let mut newbackground = Background {
-        tiles: Vec::new(),
-        offset: Vec3::new(0.,0.,0.),
-        innerbound: Boundary {
-            left: -(256.*3.5),
-            right: (256.*3.5),
-            top: (256.*2.5),
-            bottom: (256.*2.5),
-        },
-        outerbound: Boundary {
-            left: -(256.*4.5),
-            right: (256.*4.5),
-            top: (256.*3.5),
-            bottom: (256.*3.5),
-        }
-    };
+    let (offsetx, offsety) = get_offset(window, Vec3::new(0.,0.,0.));
 
-    for tile in 0..(BGWIDTH*BGHEIGHT) {
-        newbackground.tiles.push(Vec3::new(getx(tile),gety(tile),0.));
+    for i in 0..BGWIDTH*BGHEIGHT {
+        let placex = offsetx + ((i%BGWIDTH) as f32 * TXWIDTH);
+        let placey = offsety + ((i/BGWIDTH) as f32 * TXHEIGHT);
 
         commands.spawn_bundle(SpriteBundle {
             material: materials.add(texture_handle.clone().into()),
-            transform: Transform {
-                translation: Vec3::new(newbackground.tiles[tile as usize].x,newbackground.tiles[tile as usize].y,0.),
-                ..Default::default()
-            },
             ..Default::default()
         })
-        .insert(Tile {
-            index: tile,
-            pos: Vec3::new(newbackground.tiles[tile as usize].x,newbackground.tiles[tile as usize].y,0.)
-         });
+        .insert(Tile { posx: placex, posy: placey });
+
+        println!("tile position: {}x, {}y", placex, placey);
     }
-    commands.spawn().insert(newbackground);
 }
 
 pub fn bg_position_system(
-    mut background: Query<&mut Background>,
-    mut bg_tiles: Query<(&mut Sprite, With<Tile>)>,
+    mut windows: ResMut<Windows>,
+    mut cam: Query<(&MainCam)>,
+    mut bg_tiles: Query<(&mut Transform, &mut Tile)>,
 ) {
-    for (mut bg) in background.iter_mut() {
+    let (maincam) = cam.single_mut().expect("there can be only one main-camera!");
+    let mut window = windows.get_primary_mut().unwrap();
+    let mut iterator: i32 = 0;
+    let (offsetx, offsety) = get_offset(window, maincam.position);
 
-        for (sprite, mut istile) in bg_tiles.iter_mut() {
-    
-            bg.offset.x -= 0.2;
-            bg.offset.y -= 0.2;
-    
-            //sprite.transform.translation.x = bg.offset.x + 
-    
-        }
+    for (mut transform, mut tile) in bg_tiles.iter_mut() {
+        transform.translation.x = offsetx + ((iterator%BGWIDTH) as f32 * TXWIDTH);
+        transform.translation.y = offsety + ((iterator/BGWIDTH) as f32 * TXHEIGHT);
+        iterator+=1;
     }
 }
-
-// pub fn tile_positioning(
-//     background: Query<&mut Background>,
-//     tilesprites: Query<(&mut Sprite, &mut Tile)>
-// ) {
-
-//     // for ( bg ) in background.single(){
-//     // }
-
-//     if let Some(bgref) = background.get_entity(){
-
-//     }
-    
-//     for (sprite, tile) in tilesprites.iter_mut() {
-//         sprite.transform.translation.x = 
-//     }
-// }

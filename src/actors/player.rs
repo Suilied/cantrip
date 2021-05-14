@@ -3,10 +3,12 @@ use bevy::app::AppExit;
 
 pub use super::character::Character;
 
+pub struct MainCam {
+    pub position: Vec3
+}
+
 const MAX_MOVE_SPEED: f32 = 2.;
 const MOTE_SPAWN_SPEED: f32 = 0.5;
-
-pub struct MainCam;
 
 pub enum Affinity {
     Anger,
@@ -235,12 +237,15 @@ pub fn update_manabars(
 
 pub fn update_camera(
     mut player: Query<(&mut Character, With<Player>)>,
-    mut cam: Query<(&mut Transform, With<MainCam>)>,
+    mut cam: Query<(&mut Transform, &mut MainCam)>,
 ) {
     let (character, _isplayer) = player.single_mut().expect("there can be only one player!");
-    let (mut camtransform, _iscam) = cam.single_mut().expect("there can be only one main-camera!");
+    let (mut camtransform, mut maincam) = cam.single_mut().expect("there can be only one main-camera!");
 
-    //if character.posx
+    // Update actual camera
     camtransform.translation.x = character.posx;
     camtransform.translation.y = character.posy;
+
+    // update MainCam position
+    maincam.position = camtransform.translation;
 }
