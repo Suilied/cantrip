@@ -2,20 +2,14 @@ use bevy::prelude::*;
 use bevy::app::AppExit;
 
 pub use super::character::Character;
+pub use super::mote::*;
 
 pub struct MainCam {
     pub position: Vec3
 }
 
-const MAX_MOVE_SPEED: f32 = 2.;
-const MOTE_SPAWN_SPEED: f32 = 0.5;
-
-pub enum Affinity {
-    Anger,
-    Joy,
-    Fear,
-    Sadness,
-}
+const MAX_MOVE_SPEED: f32 = 120.;
+const STARTING_CASTSPEED: i32 = 1;
 
 pub struct ManaBar {
     size: f32,
@@ -25,33 +19,35 @@ pub struct ManaBar {
 
 pub struct Player;
 
-pub fn player_movement(
+pub fn player_update(
+    time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
     mut position_players: Query<(&mut Transform, &mut Sprite, (&mut Character, With<Player>))>,
     mut manabars: Query<&mut ManaBar>,
+    mut ew_spawn_mote: EventWriter<SpawnMoteEvent>,
     mut exit: EventWriter<AppExit>,
 ) {
     for (mut transform, mut sprite, (mut player, playerid)) in position_players.iter_mut() {
 
         let mut stop_bounce = true;
         if keyboard_input.pressed(KeyCode::Left) {
-            player.posx -= MAX_MOVE_SPEED;
+            player.posx -= MAX_MOVE_SPEED*time.delta_seconds();
             stop_bounce = false;
 
             sprite.flip_x = true;
         }
         if keyboard_input.pressed(KeyCode::Right) {
-            player.posx += MAX_MOVE_SPEED;
+            player.posx += MAX_MOVE_SPEED*time.delta_seconds();
             stop_bounce = false;
 
             sprite.flip_x = false;
         }
         if keyboard_input.pressed(KeyCode::Up) {
-            player.posy += MAX_MOVE_SPEED;
+            player.posy += MAX_MOVE_SPEED*time.delta_seconds();
             stop_bounce = false;
         }
         if keyboard_input.pressed(KeyCode::Down) {
-            player.posy -= MAX_MOVE_SPEED;
+            player.posy -= MAX_MOVE_SPEED*time.delta_seconds();
             stop_bounce = false;
         }
         if keyboard_input.pressed(KeyCode::Escape) {
@@ -66,28 +62,24 @@ pub fn player_movement(
             println!("Motes: \nAnger: {} | Fear   : {}\nJoy  : {} | Sadness: {}", player.anger, player.fear, player.joy, player.sadness);
         }
 
-        if keyboard_input.pressed(KeyCode::W) {
-            if player.casting {
-                player.anger += MOTE_SPAWN_SPEED;
-            }
+        if keyboard_input.just_pressed(KeyCode::W) {
+            // Spawn Anger Mote
+            ew_spawn_mote.send(SpawnMoteEvent(Affinity::Anger));
         }
 
-        if keyboard_input.pressed(KeyCode::S) {
-            if player.casting {
-                player.fear += MOTE_SPAWN_SPEED;
-            }
+        if keyboard_input.just_pressed(KeyCode::S) {
+            // Spawn Fear Mote
+            ew_spawn_mote.send(SpawnMoteEvent(Affinity::Fear));
         }
 
-        if keyboard_input.pressed(KeyCode::A) {
-            if player.casting {
-                player.joy += MOTE_SPAWN_SPEED;
-            }
+        if keyboard_input.just_pressed(KeyCode::A) {
+            // Spawn Joy Mote
+            ew_spawn_mote.send(SpawnMoteEvent(Affinity::Joy));
         }
 
-        if keyboard_input.pressed(KeyCode::D) {
-            if player.casting {
-                player.sadness += MOTE_SPAWN_SPEED;
-            }
+        if keyboard_input.just_pressed(KeyCode::D) {
+            // Spawn Sadness Mote
+            ew_spawn_mote.send(SpawnMoteEvent(Affinity::Sadness));
         }
 
         for mut mbars in manabars.iter_mut() {
@@ -99,23 +91,14 @@ pub fn player_movement(
             }
         }
 
-        if keyboard_input.just_pressed(KeyCode::W) || keyboard_input.just_pressed(KeyCode::A) || keyboard_input.just_pressed(KeyCode::S) || keyboard_input.just_pressed(KeyCode::D) {
-            println!("Starting mana values: {}, {}, {}, {}", player.anger, player.joy, player.fear, player.sadness);
-        }
-        if keyboard_input.just_released(KeyCode::W) || keyboard_input.just_released(KeyCode::A) || keyboard_input.just_released(KeyCode::S) || keyboard_input.just_released(KeyCode::D) {
-            println!("Stopping mana values: {}, {}, {}, {}", player.anger, player.joy, player.fear, player.sadness);
-        }
-
+        // DO BOUNCE
         let start_bounce = keyboard_input.just_pressed(KeyCode::Left) || keyboard_input.just_pressed(KeyCode::Right) || keyboard_input.just_pressed(KeyCode::Up) || keyboard_input.just_pressed(KeyCode::Down);
-
         if stop_bounce && player.bounce_speed > 0. {
             player.bounce_speed = 0.;
         }
-
         if start_bounce && player.bounce_speed == 0. {
             player.bounce_speed = player.bounce_power;
         }
-
         if player.bounce_speed < 0. && player.bounce_offset < 0. {
             if stop_bounce == false { 
                 player.bounce_speed = player.bounce_power;
@@ -124,14 +107,15 @@ pub fn player_movement(
             }
             player.bounce_offset = 0.;
         }
-
         player.bounce_offset += player.bounce_speed;
-        if player.bounce_offset > 0. { player.bounce_speed -= 0.08; }
+        if player.bounce_offset > 0. { player.bounce_speed -= 4.8*time.delta_seconds(); }
 
+        // UPDATE SPRITE
         transform.translation.x = player.posx;
         transform.translation.y = player.posy + player.bounce_offset;
     }
 }
+
 
 pub fn setup_player(
     mut commands: Commands,
@@ -141,6 +125,10 @@ pub fn setup_player(
     let texture_handle = asset_server.load("sprites/player.png");
     commands.spawn_bundle(SpriteBundle {
         material: materials.add(texture_handle.into()),
+        transform: Transform {
+            translation: Vec3::new(0.,0.,1.),
+            ..Default::default()
+        },
         ..Default::default()
     })
     .insert(Character{
@@ -151,6 +139,7 @@ pub fn setup_player(
         posy: 0.,
 
         casting: false,
+        castspeed: STARTING_CASTSPEED,
 
         anger: 0.,
         joy: 0.,
@@ -232,7 +221,6 @@ pub fn update_manabars(
         transform.translation.x = bar.pos.x; 
         transform.translation.y = bar.pos.y;
     }
-
 }
 
 pub fn update_camera(

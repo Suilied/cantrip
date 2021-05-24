@@ -5,3 +5,4 @@ pub use self::player::Player;
 pub mod character;
 pub mod player;
 pub mod background;
+pub mod mote;

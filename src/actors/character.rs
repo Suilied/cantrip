@@ -6,6 +6,7 @@ pub struct Character {
     pub posy: f32,
 
     pub casting: bool,
+    pub castspeed: i32,
 
     pub anger: f32,
     pub joy: f32,

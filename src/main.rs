@@ -8,11 +8,16 @@ fn main() {
         .add_startup_system(setup.system())
         .add_startup_system(actors::background::setup_background.system())
         .add_startup_system(actors::player::setup_player.system())
+        .add_startup_system(actors::mote::setup_mote_system.system())
 
         .add_system(actors::player::update_manabars.system())
         .add_system(actors::player::update_camera.system())
         .add_system(actors::background::bg_position_system.system())
-        .add_system(actors::player::player_movement.system())
+        .add_system(actors::player::player_update.system())
+        .add_system(actors::mote::mote_system.system())
+
+        .add_event::<actors::mote::SpawnMoteEvent>()
+
         .run();
 }
 
